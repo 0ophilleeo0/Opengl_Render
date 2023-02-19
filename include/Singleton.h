@@ -1,28 +1,21 @@
 #ifndef SINGLETON_H
 #define SINGLETON_H
 
+template<typename T>
 class Singleton
 {
 public:
-    static Singleton* GetInstacnce(){
-        if (m_singleton == nullptr) {
-            m_singleton = new Singleton;
-        }
-
+    static T& GetInstacnce(){
+        static T m_singleton;
         return m_singleton;
     }
 
-private:
-    Singleton(){}
-    ~Singleton(){}
-
-    Singleton(const Singleton&);
-    const Singleton& operator=(const Singleton);
+    Singleton(const Singleton&) = delete;
+    const Singleton& operator=(const Singleton) = delete;
 
 private:
-    static Singleton* m_singleton;
+    Singleton() = default;
+    ~Singleton() = default;
 };
-
-Singleton* Singleton::m_singleton = nullptr;
 
 #endif

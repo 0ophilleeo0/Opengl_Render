@@ -2,9 +2,6 @@
 #define WINDOWEVENT_H
 
 #include <GLFW/glfw3.h>
-#include <memory>
-#include "Camera.h"
-
 
 void processInput(GLFWwindow* window, float deltaTime);
 

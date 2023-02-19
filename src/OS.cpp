@@ -1,13 +1,12 @@
 #include "OS.h"
-#include <iostream>
-
 #include "WindowEvent.h"
+#include <iostream>
 #include <glad/glad.h>
 
 
-ErrorCode OS::Initialize()
+RetCode OS::Initialize()
 {
-    ErrorCode res = ErrorCode::SUCCESS;
+    RetCode res = RetCode::SUCCESS;
     InitializeAndConfigure();
     res = GlfwWindowCreation();
     SetWindowFuction();
@@ -25,7 +24,7 @@ void OS::InitializeAndConfigure()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 }
   
-ErrorCode OS::GlfwWindowCreation()
+RetCode OS::GlfwWindowCreation()
 {
     // glfw window creation
     // --------------------
@@ -34,11 +33,11 @@ ErrorCode OS::GlfwWindowCreation()
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
-        return ErrorCode::FAILED;
+        return RetCode::FAILED;
     }
     glfwMakeContextCurrent(window);
 
-    return ErrorCode::SUCCESS;
+    return RetCode::SUCCESS;
 }
 
 void OS::SetWindowFuction()
@@ -51,15 +50,15 @@ void OS::SetWindowFuction()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
-ErrorCode OS::LoadOpenGLFunction()
+RetCode OS::LoadOpenGLFunction()
 {
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
-        return ErrorCode::FAILED;
+        return RetCode::FAILED;
     }
 
-    return ErrorCode::SUCCESS;
+    return RetCode::SUCCESS;
 }

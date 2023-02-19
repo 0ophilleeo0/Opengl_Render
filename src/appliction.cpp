@@ -1,12 +1,12 @@
 #include "ShaderClass.h"
 #include "vertices.h"
 #include "OS.h"
-#include "view.h"
+#include "Viewport.h"
 #include "WindowEvent.h"
+#include "Singleton.h"
 
 #include <GLFW/glfw3.h>
 #include <string>
-
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -19,12 +19,15 @@ float lastFrame = 0.0f;
 
 float lastX = SCR_WIDTH / 2;
 float lastY = SCR_HEIGHT / 2;
-std::shared_ptr<Camera> cameraPtr = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 3.0f));
 
 int main()
 {
     OS os(SCR_WIDTH, SCR_HEIGHT);
     os.Initialize();
+
+    Viewport& viewport = Singleton<Viewport>::GetInstacnce();
+    std::shared_ptr<Camera> cameraPtr = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 3.0f));
+    viewport.Init(SCR_WIDTH, SCR_HEIGHT, cameraPtr, 0);
 
     // configure global opengl state
     // -----------------------------
@@ -131,7 +134,7 @@ int main()
     glDeleteVertexArrays(1, &cubeVAO);
     glDeleteVertexArrays(1, &lightCubeVAO);
     glDeleteBuffers(1, &VBO);
-
+    viewport.Free();
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
     glfwTerminate();

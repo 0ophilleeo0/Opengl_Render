@@ -9,14 +9,14 @@ class OS
 {
 public:
     OS(unsigned int w, unsigned int h) :width(w), height(h) {}
-    ErrorCode Initialize();
+    RetCode Initialize();
     GLFWwindow* GetWindow() { return window; }
 private:
     void InitializeAndConfigure();
     void SetWindowFuction();
 
-    ErrorCode GlfwWindowCreation();
-    ErrorCode LoadOpenGLFunction();
+    RetCode GlfwWindowCreation();
+    RetCode LoadOpenGLFunction();
 
     unsigned int width;
     unsigned int height;
