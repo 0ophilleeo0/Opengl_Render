@@ -29,16 +29,12 @@ int main()
     std::shared_ptr<Camera> cameraPtr = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 3.0f));
     viewport.Init(SCR_WIDTH, SCR_HEIGHT, cameraPtr, 0);
 
-    // configure global opengl state
-    // -----------------------------
-    glEnable(GL_DEPTH_TEST);
-
     // build and compile our shader zprogram
     // ------------------------------------
-    std::string bathPath = "E:/opengl/shader/";
-    Shader lightingShader((bathPath + "2.2_basic_light.vs").c_str(), (bathPath + "2.2_basic_light.fs").c_str());
-    Shader lightCubeShader((bathPath + "2.2_light_cube.vs").c_str(), (bathPath + "2.2_light_cube.fs").c_str());
-
+    std::shared_ptr<Shader> shaderManager = std::make_shared<Shader>("E:/github/Opengl_Render/shader/");
+    shaderManager->CompileShader("2.2_basic_light.vs", "2.2_basic_light.fs", "basic_light");
+    shaderManager->CompileShader("2.2_light_cube.vs", "2.2_light_cube.fs", "light_cube");
+    shaderManager->CompileShader("textureFbo.vs", "textureFbo.fs", "texFBOShader");
 
     // first, configure the cube's VAO (and VBO)
     unsigned int VBO, cubeVAO;
@@ -68,6 +64,9 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+    // configure global opengl state
+    // -----------------------------
+    glEnable(GL_DEPTH_TEST);
 
     // render loop
     // -----------
@@ -89,21 +88,21 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // be sure to activate shader when setting uniforms/drawing objects
-        lightingShader.use();
-        lightingShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-        lightingShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
-        lightingShader.setVec3("lightPos", lightPos);
-        lightingShader.setVec3("viewPos", cameraPtr->Position);
+        shaderManager->use("basic_light");
+        shaderManager->setVec3("basic_light", "objectColor", 1.0f, 0.5f, 0.31f);
+        shaderManager->setVec3("basic_light", "lightColor", 1.0f, 1.0f, 1.0f);
+        shaderManager->setVec3("basic_light", "lightPos", lightPos);
+        shaderManager->setVec3("basic_light", "viewPos", cameraPtr->Position);
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(cameraPtr->Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = cameraPtr->GetViewMatrix();
-        lightingShader.setMat4("projection", projection);
-        lightingShader.setMat4("view", view);
+        shaderManager->setMat4("basic_light", "projection", projection);
+        shaderManager->setMat4("basic_light", "view", view);
 
         // world transformation
         glm::mat4 model = glm::mat4(1.0f);
-        lightingShader.setMat4("model", model);
+        shaderManager->setMat4("basic_light", "model", model);
 
         // render the cube
         glBindVertexArray(cubeVAO);
@@ -111,13 +110,13 @@ int main()
 
 
         // also draw the lamp object
-        lightCubeShader.use();
-        lightCubeShader.setMat4("projection", projection);
-        lightCubeShader.setMat4("view", view);
+        shaderManager->use("light_cube");
+        shaderManager->setMat4("light_cube", "projection", projection);
+        shaderManager->setMat4("light_cube", "view", view);
         model = glm::mat4(1.0f);
         model = glm::translate(model, lightPos);
         model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
-        lightCubeShader.setMat4("model", model);
+        shaderManager->setMat4("light_cube", "model", model);
 
         glBindVertexArray(lightCubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
