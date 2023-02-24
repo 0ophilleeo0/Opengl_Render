@@ -14,7 +14,7 @@ public:
 
 	std::shared_ptr<Camera> cameraPtr = nullptr;
 
-	GLuint offScreenFBO;
+	GLuint intermediateFBO;
 	GLuint colorBuffer;
 	GLuint multiSampleFBO;
 private:

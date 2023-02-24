@@ -7,8 +7,8 @@ RetCode Viewport::Init(const int w, const int h, std::shared_ptr<Camera>& camera
     height = h;
     cameraPtr = camera;
 
-    glGenFramebuffers(1, &offScreenFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, offScreenFBO);
+    glGenFramebuffers(1, &intermediateFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, intermediateFBO);
 
     glGenTextures(1, &colorBuffer);
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
@@ -40,8 +40,8 @@ RetCode Viewport::Init(const int w, const int h, std::shared_ptr<Camera>& camera
         glGenTextures(1, &textureColorBufferMultiSampled);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorBufferMultiSampled);
         glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, sample, GL_RGB, width, height, GL_TRUE);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureColorBufferMultiSampled, 0);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 
         // create a (also multisampled) renderbuffer object for depth and stencil attachments
         unsigned int rbo;
@@ -63,8 +63,8 @@ RetCode Viewport::Init(const int w, const int h, std::shared_ptr<Camera>& camera
 
 void Viewport::Free()
 {
-    if (offScreenFBO != 0) {
-        glDeleteFramebuffers(1, &offScreenFBO);
+    if (intermediateFBO != 0) {
+        glDeleteFramebuffers(1, &intermediateFBO);
     }
 
     if (multiSampleFBO != 0) {
