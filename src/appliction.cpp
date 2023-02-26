@@ -1,9 +1,11 @@
-#include "ShaderClass.h"
-#include "vertices.h"
+#include "Singleton.h"
+#include "WindowEvent.h"
 #include "OS.h"
 #include "Viewport.h"
-#include "WindowEvent.h"
-#include "Singleton.h"
+
+#include "vertices.h"
+#include "ShaderManager.h"
+#include "TextureManager.h"
 
 #include <GLFW/glfw3.h>
 #include <string>
@@ -37,6 +39,15 @@ int main()
     shaderManager->CompileShader("2.2_light_cube.vs", "2.2_light_cube.fs", "light_cube");
     shaderManager->CompileShader("textureFbo.vs", "textureFbo.fs", "texFBOShader");
 
+    // Load texture
+    // ------------------------------------
+    std::shared_ptr<TextureManager> textureManager = std::make_shared<TextureManager>("E:/github/Opengl_Render/texture/");
+    textureManager->LoadTexture("container.jpg", ColorType::RGB);
+    textureManager->LoadTexture("container2.png", ColorType::RGB);
+    textureManager->LoadTexture("blending_transparent_window.png", ColorType::RGB);
+    textureManager->LoadTexture("awesomeface.png", ColorType::RGBA, true);
+
+
     // first, configure the cube's VAO (and VBO)
     unsigned int cubeVBO, cubeVAO;
     glGenVertexArrays(1, &cubeVAO);
@@ -44,14 +55,17 @@ int main()
 
     glGenBuffers(1, &cubeVBO);
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
 
     // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // normal attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    // texture attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // normal attribute
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     // second, configure the light's VAO (VBO stays the same; the vertices are the same for the light object which is also a 3D cube)
     unsigned int lightCubeVAO;
@@ -60,7 +74,7 @@ int main()
 
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     // note that we update the lamp's position attribute's stride to reflect the updated buffer data
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     unsigned int screenVAO;
@@ -79,7 +93,8 @@ int main()
 
     // configure global opengl state
     // -----------------------------
-    //glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
     // render loop
     // -----------
@@ -104,13 +119,13 @@ int main()
             glBindFramebuffer(GL_FRAMEBUFFER, viewport.intermediateFBO);
         }
         
+
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // 我们现在不使用模板缓冲
         glEnable(GL_DEPTH_TEST);
 
         // be sure to activate shader when setting uniforms/drawing objects
         shaderManager->use("basic_light");
-        shaderManager->setVec3("basic_light", "objectColor", 1.0f, 0.5f, 0.31f);
         shaderManager->setVec3("basic_light", "lightColor", 1.0f, 1.0f, 1.0f);
         shaderManager->setVec3("basic_light", "lightPos", lightPos);
         shaderManager->setVec3("basic_light", "viewPos", cameraPtr->Position);
@@ -124,6 +139,15 @@ int main()
         // world transformation
         glm::mat4 model = glm::mat4(1.0f);
         shaderManager->setMat4("basic_light", "model", model);
+
+        //set texture
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureManager->GetTextureID("container.jpg"));
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textureManager->GetTextureID("awesomeface.png"));
+
+        shaderManager->setInt("basic_light", "txSampler0", 0);
+        shaderManager->setInt("basic_light", "txSampler1", 1);
 
         // render the cube
         glBindVertexArray(cubeVAO);
@@ -141,6 +165,7 @@ int main()
         glBindVertexArray(lightCubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
+        
         if (msaaNum > 0) {
             // 将多重采样缓冲还原到中介FBO上
             glBindFramebuffer(GL_READ_FRAMEBUFFER, viewport.multiSampleFBO);
@@ -159,9 +184,13 @@ int main()
 
         shaderManager->use("texFBOShader");
         glBindVertexArray(screenVAO);
-        glBindTexture(GL_TEXTURE_2D, viewport.colorBuffer);	// use the color attachment texture as the texture of the quad plane
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, viewport.colorBuffer);	// use the color attachment texture as the texture of the quad planes
+        shaderManager->setInt("texFBOShader", "screenTexture", 0);
+
         glDrawArrays(GL_TRIANGLES, 0, 6);
-        
+
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(os.GetWindow());

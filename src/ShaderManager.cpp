@@ -1,4 +1,4 @@
-#include "ShaderClass.h"
+#include "ShaderManager.h"
 
 void Shader::CompileShader(std::string vertexPath, std::string fragmentPath, const std::string name)
 {
