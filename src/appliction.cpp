@@ -3,12 +3,14 @@
 #include "OS.h"
 #include "Viewport.h"
 
-#include "vertices.h"
 #include "ShaderManager.h"
 #include "TextureManager.h"
+#include "ObjectManager.h"
 
 #include <GLFW/glfw3.h>
 #include <string>
+#include <vector>
+#include <algorithm>
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -35,8 +37,8 @@ int main()
     // build and compile our shader zprogram
     // ------------------------------------
     std::shared_ptr<Shader> shaderManager = std::make_shared<Shader>("E:/github/Opengl_Render/shader/");
-    shaderManager->CompileShader("2.2_basic_light.vs", "2.2_basic_light.fs", "basic_light");
-    shaderManager->CompileShader("2.2_light_cube.vs", "2.2_light_cube.fs", "light_cube");
+    shaderManager->CompileShader("phong.vs", "phong.fs", "phong");
+    shaderManager->CompileShader("basic.vs", "basic.fs", "basic");
     shaderManager->CompileShader("textureFbo.vs", "textureFbo.fs", "texFBOShader");
 
     // Load texture
@@ -44,57 +46,22 @@ int main()
     std::shared_ptr<TextureManager> textureManager = std::make_shared<TextureManager>("E:/github/Opengl_Render/texture/");
     textureManager->LoadTexture("container.jpg", ColorType::RGB);
     textureManager->LoadTexture("container2.png", ColorType::RGB);
-    textureManager->LoadTexture("blending_transparent_window.png", ColorType::RGB);
+    textureManager->LoadTexture("blending_transparent_window.png", ColorType::RGBA);
     textureManager->LoadTexture("awesomeface.png", ColorType::RGBA, true);
 
+    // Load scene geometry
+    // ------------------------------------
+    Object& objectManager = Singleton<Object>::GetInstacnce();
+    objectManager.CreatCubeVAO();
+    objectManager.CreatMesh2DVAO();
+    objectManager.CreatMesh3DVAO();
 
-    // first, configure the cube's VAO (and VBO)
-    unsigned int cubeVBO, cubeVAO;
-    glGenVertexArrays(1, &cubeVAO);
-    glBindVertexArray(cubeVAO);
-
-    glGenBuffers(1, &cubeVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    // texture attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    // normal attribute
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    // second, configure the light's VAO (VBO stays the same; the vertices are the same for the light object which is also a 3D cube)
-    unsigned int lightCubeVAO;
-    glGenVertexArrays(1, &lightCubeVAO);
-    glBindVertexArray(lightCubeVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    // note that we update the lamp's position attribute's stride to reflect the updated buffer data
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    unsigned int screenVAO;
-    glGenVertexArrays(1, &screenVAO);
-    glBindVertexArray(screenVAO);
-
-    unsigned int screenVBO;
-    glGenBuffers(1, &screenVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, screenVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // configure global opengl state
-    // -----------------------------
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    std::vector<glm::vec3> veg_pos;
+    veg_pos.push_back(glm::vec3(-1.5f, 0.5f, -0.48f));
+    veg_pos.push_back(glm::vec3(1.5f, 0.5f, 0.51f));
+    veg_pos.push_back(glm::vec3(0.0f, 0.5f, 0.7f));
+    veg_pos.push_back(glm::vec3(-0.3f, 0.5f, -2.3f));
+    veg_pos.push_back(glm::vec3(0.5f, 0.5f, -0.6f));
 
     // render loop
     // -----------
@@ -111,34 +78,33 @@ int main()
         processInput(os.GetWindow(), deltaTime);
 
         // render
-        // ------
         if (msaaNum > 0) {
             glBindFramebuffer(GL_FRAMEBUFFER, viewport.multiSampleFBO);
         }
         else {
             glBindFramebuffer(GL_FRAMEBUFFER, viewport.intermediateFBO);
         }
-        
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // 我们现在不使用模板缓冲
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
 
-        // be sure to activate shader when setting uniforms/drawing objects
-        shaderManager->use("basic_light");
-        shaderManager->setVec3("basic_light", "lightColor", 1.0f, 1.0f, 1.0f);
-        shaderManager->setVec3("basic_light", "lightPos", lightPos);
-        shaderManager->setVec3("basic_light", "viewPos", cameraPtr->Position);
+        // render cube
+        shaderManager->use("phong");
+        shaderManager->setVec3("phong", "lightColor", 1.0f, 1.0f, 1.0f);
+        shaderManager->setVec3("phong", "lightPos", lightPos);
+        shaderManager->setVec3("phong", "viewPos", cameraPtr->Position);
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(cameraPtr->Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = cameraPtr->GetViewMatrix();
-        shaderManager->setMat4("basic_light", "projection", projection);
-        shaderManager->setMat4("basic_light", "view", view);
+        shaderManager->setMat4("phong", "projection", projection);
+        shaderManager->setMat4("phong", "view", view);
 
         // world transformation
         glm::mat4 model = glm::mat4(1.0f);
-        shaderManager->setMat4("basic_light", "model", model);
+        shaderManager->setMat4("phong", "model", model);
 
         //set texture
         glActiveTexture(GL_TEXTURE0);
@@ -146,26 +112,56 @@ int main()
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, textureManager->GetTextureID("awesomeface.png"));
 
-        shaderManager->setInt("basic_light", "txSampler0", 0);
-        shaderManager->setInt("basic_light", "txSampler1", 1);
+        shaderManager->setInt("phong", "txSampler0", 0);
+        shaderManager->setInt("phong", "txSampler1", 1);
 
-        // render the cube
-        glBindVertexArray(cubeVAO);
+        glBindVertexArray(objectManager.GetCubeVAO());
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // also draw the lamp object
-        shaderManager->use("light_cube");
-        shaderManager->setMat4("light_cube", "projection", projection);
-        shaderManager->setMat4("light_cube", "view", view);
+        // render lightcube
+        shaderManager->use("basic");
+        shaderManager->setBool("basic", "useTex", false);
+        shaderManager->setVec4("basic", "baseColor", glm::vec4(1.0, 1.0, 1.0, 0.0));
+
         model = glm::mat4(1.0f);
         model = glm::translate(model, lightPos);
         model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
-        shaderManager->setMat4("light_cube", "model", model);
+        shaderManager->setMat4("basic", "model", model);
+        shaderManager->setMat4("basic", "view", view);
+        shaderManager->setMat4("basic", "projection", projection);
 
-        glBindVertexArray(lightCubeVAO);
+        glBindVertexArray(objectManager.GetCubeVAO());
         glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDisable(GL_CULL_FACE);
 
-        
+        //transparent sort
+        //sort
+        std::sort(veg_pos.begin(), veg_pos.end(), [&cameraPtr](glm::vec3 a, glm::vec3 b)
+            {
+                float distanceA = glm::length(cameraPtr->Position - a);
+                float distanceB = glm::length(cameraPtr->Position - b);
+                return distanceA > distanceB;
+            });
+
+        //transparent render
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        shaderManager->setBool("basic", "useTex", true);
+        shaderManager->setInt("basic", "txSampler0", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureManager->GetTextureID("blending_transparent_window.png"));
+        glBindVertexArray(objectManager.GetMesh3DVAO());
+
+        for (auto& pos : veg_pos)
+        {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, pos);
+            shaderManager->setMat4("basic", "model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
+        // Blit Frame
         if (msaaNum > 0) {
             // 将多重采样缓冲还原到中介FBO上
             glBindFramebuffer(GL_READ_FRAMEBUFFER, viewport.multiSampleFBO);
@@ -173,22 +169,18 @@ int main()
             glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
 
-        // now bind back to default framebuffer and draw a quad plane with the attached framebuffer color texture
+        //off_screen rendering
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // disable depth test so screen-space quad isn't discarded due to depth test.
-        glDisable(GL_DEPTH_TEST); 
-        // set clear color to white (not really necessary actually, since we won't be able to see behind the quad anyways)
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f); 
-        // clear all relevant buffers
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_BLEND);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         shaderManager->use("texFBOShader");
-        glBindVertexArray(screenVAO);
-
+        glBindVertexArray(objectManager.GetMesh2DVAO());
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, viewport.colorBuffer);	// use the color attachment texture as the texture of the quad planes
         shaderManager->setInt("texFBOShader", "screenTexture", 0);
-
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -197,11 +189,6 @@ int main()
         glfwPollEvents();
     }
 
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &cubeVAO);
-    glDeleteVertexArrays(1, &lightCubeVAO);
-    glDeleteBuffers(1, &cubeVBO);
     viewport.Free();
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
