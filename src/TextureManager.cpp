@@ -49,6 +49,49 @@ bool TextureManager::LoadTexture(std::string textureName, ColorType type, bool f
     return true;
 }
 
+bool TextureManager::LoadCubeTexture(std::string cubeName, const std::vector<std::string>& faces,\
+    ColorType type, bool flip)
+{
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    // 加载并生成纹理
+    int width, height, nrChannels;
+    unsigned char* data;
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    if (flip) {
+        stbi_set_flip_vertically_on_load(true);
+    }
+
+    for (int i = 0; i < 6; ++i) {
+        std::string picPath = basePath + faces[i];
+        unsigned char* data = stbi_load(picPath.c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+
+    textureIDMap[cubeName] = textureID;
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    return true;
+}
+
 GLuint TextureManager::GetTextureID(std::string textureName)
 {
     if (textureIDMap.count(textureName) != 0) {

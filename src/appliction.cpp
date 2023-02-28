@@ -40,6 +40,7 @@ int main()
     shaderManager->CompileShader("phong.vs", "phong.fs", "phong");
     shaderManager->CompileShader("basic.vs", "basic.fs", "basic");
     shaderManager->CompileShader("textureFbo.vs", "textureFbo.fs", "texFBOShader");
+    shaderManager->CompileShader("SkyBox.vs", "SkyBox.fs", "SkyBoxShader");
 
     // Load texture
     // ------------------------------------
@@ -49,6 +50,17 @@ int main()
     textureManager->LoadTexture("blending_transparent_window.png", ColorType::RGBA);
     textureManager->LoadTexture("awesomeface.png", ColorType::RGBA, true);
 
+    std::vector<std::string> faces
+    {
+        "skybox/right.jpg",
+        "skybox/left.jpg",
+        "skybox/bottom.jpg",
+        "skybox/top.jpg",
+        "skybox/front.jpg",
+        "skybox/back.jpg"
+    };
+
+    textureManager->LoadCubeTexture("skyCubeMap", faces, ColorType::RGB);
     // Load scene geometry
     // ------------------------------------
     Object& objectManager = Singleton<Object>::GetInstacnce();
@@ -84,26 +96,27 @@ int main()
         else {
             glBindFramebuffer(GL_FRAMEBUFFER, viewport.intermediateFBO);
         }
-
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // 我们现在不使用模板缓冲
+       // view/projection transformations
+        glm::mat4 projection = glm::perspective(glm::radians(cameraPtr->Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = cameraPtr->GetViewMatrix();
+
+        // render cube
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
 
-        // render cube
         shaderManager->use("phong");
         shaderManager->setVec3("phong", "lightColor", 1.0f, 1.0f, 1.0f);
         shaderManager->setVec3("phong", "lightPos", lightPos);
         shaderManager->setVec3("phong", "viewPos", cameraPtr->Position);
 
-        // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(cameraPtr->Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = cameraPtr->GetViewMatrix();
         shaderManager->setMat4("phong", "projection", projection);
         shaderManager->setMat4("phong", "view", view);
 
         // world transformation
         glm::mat4 model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.5f));
         shaderManager->setMat4("phong", "model", model);
 
         //set texture
@@ -121,11 +134,11 @@ int main()
         // render lightcube
         shaderManager->use("basic");
         shaderManager->setBool("basic", "useTex", false);
-        shaderManager->setVec4("basic", "baseColor", glm::vec4(1.0, 1.0, 1.0, 0.0));
+        shaderManager->setVec4("basic", "baseColor", glm::vec4(0.5, 0.5, 0.5, 1.0));
 
         model = glm::mat4(1.0f);
         model = glm::translate(model, lightPos);
-        model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+        model = glm::scale(model, glm::vec3(0.1f)); // a smaller cube
         shaderManager->setMat4("basic", "model", model);
         shaderManager->setMat4("basic", "view", view);
         shaderManager->setMat4("basic", "projection", projection);
@@ -133,6 +146,20 @@ int main()
         glBindVertexArray(objectManager.GetCubeVAO());
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glDisable(GL_CULL_FACE);
+
+        // draw skybox as last
+        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+        shaderManager->use("SkyBoxShader");
+        glm::mat4 skyView = glm::mat4(glm::mat3(view)); // remove translation from the view matrix
+        shaderManager->setMat4("SkyBoxShader", "view", skyView);
+        shaderManager->setMat4("SkyBoxShader", "projection", projection);
+        // skybox cube
+        glBindVertexArray(objectManager.GetCubeVAO());
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, textureManager->GetTextureID("skyCubeMap"));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindVertexArray(0);
+        glDepthFunc(GL_LESS); // set depth function back to default
 
         //transparent sort
         //sort
