@@ -12,6 +12,9 @@
 #include <vector>
 #include <algorithm>
 
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
+
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -75,6 +78,25 @@ int main()
     veg_pos.push_back(glm::vec3(-0.3f, 0.5f, -2.3f));
     veg_pos.push_back(glm::vec3(0.5f, 0.5f, -0.6f));
 
+    
+    unsigned int blockIndex = 0;
+    unsigned int basicIndex = glGetUniformBlockIndex(shaderManager->GetID("basic"), "Matrices");
+    unsigned int phongIndex = glGetUniformBlockIndex(shaderManager->GetID("phong"), "Matrices");
+    glUniformBlockBinding(shaderManager->GetID("basic"), basicIndex, blockIndex);
+    glUniformBlockBinding(shaderManager->GetID("phong"), phongIndex, blockIndex);
+
+    //ubo
+    GLuint uboMatrix;
+    glGenBuffers(1, &uboMatrix);
+    glBindBuffer(GL_UNIFORM_BUFFER, uboMatrix);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, NULL, GL_STATIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, blockIndex, uboMatrix);
+
+    // projection transformations
+    glm::mat4 projection = glm::perspective(glm::radians(cameraPtr->Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projection));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(os.GetWindow()))
@@ -98,9 +120,13 @@ int main()
         }
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // 我们现在不使用模板缓冲
-       // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(cameraPtr->Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        // view transformations
+        // set the view and projection matrix in the uniform block - we only have to do this once per loop iteration.
         glm::mat4 view = cameraPtr->GetViewMatrix();
+
+        glBindBuffer(GL_UNIFORM_BUFFER, uboMatrix);
+        glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(view));
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         // render cube
         glEnable(GL_DEPTH_TEST);
@@ -110,9 +136,6 @@ int main()
         shaderManager->setVec3("phong", "lightColor", 1.0f, 1.0f, 1.0f);
         shaderManager->setVec3("phong", "lightPos", lightPos);
         shaderManager->setVec3("phong", "viewPos", cameraPtr->Position);
-
-        shaderManager->setMat4("phong", "projection", projection);
-        shaderManager->setMat4("phong", "view", view);
 
         // world transformation
         glm::mat4 model = glm::mat4(1.0f);
@@ -140,26 +163,26 @@ int main()
         model = glm::translate(model, lightPos);
         model = glm::scale(model, glm::vec3(0.1f)); // a smaller cube
         shaderManager->setMat4("basic", "model", model);
-        shaderManager->setMat4("basic", "view", view);
-        shaderManager->setMat4("basic", "projection", projection);
 
         glBindVertexArray(objectManager.GetCubeVAO());
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glDisable(GL_CULL_FACE);
 
+        
         // draw skybox as last
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
         shaderManager->use("SkyBoxShader");
         glm::mat4 skyView = glm::mat4(glm::mat3(view)); // remove translation from the view matrix
         shaderManager->setMat4("SkyBoxShader", "view", skyView);
         shaderManager->setMat4("SkyBoxShader", "projection", projection);
-        // skybox cube
+
         glBindVertexArray(objectManager.GetCubeVAO());
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, textureManager->GetTextureID("skyCubeMap"));
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
+        
 
         //transparent sort
         //sort
@@ -173,12 +196,13 @@ int main()
         //transparent render
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBindVertexArray(objectManager.GetMesh3DVAO());
 
+        shaderManager->use("basic");
         shaderManager->setBool("basic", "useTex", true);
         shaderManager->setInt("basic", "txSampler0", 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureManager->GetTextureID("blending_transparent_window.png"));
-        glBindVertexArray(objectManager.GetMesh3DVAO());
 
         for (auto& pos : veg_pos)
         {

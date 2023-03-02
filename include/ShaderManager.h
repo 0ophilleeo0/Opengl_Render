@@ -22,12 +22,23 @@ public:
     void use(const std::string& name)
     {
         if (shaderIDMap.count(name) == 0) {
-            std::cout << "Illegal name!" << std::endl;
+            std::cout << "Shader use : Illegal name!" << std::endl;
             return;
         }
 
         GLuint ID = shaderIDMap[name];
         glUseProgram(ID);
+    }
+
+    GLuint GetID(const std::string& name)
+    {
+        if (shaderIDMap.count(name) == 0) {
+            std::cout << "Shader GetID : Illegal name!" << std::endl;
+            return 0;
+        }
+        else {
+            return shaderIDMap[name];
+        }
     }
     // utility uniform functions
     // ------------------------------------------------------------------------
