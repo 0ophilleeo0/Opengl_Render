@@ -13,7 +13,9 @@
 class Shader
 {
 public:
-    Shader(const std::string& path) : basePath(path) {}
+    void Init(const std::string& path){
+        basePath = path;
+    }
 
     void CompileShader(std::string vertexPath, std::string fragmentPath, const std::string name);
 

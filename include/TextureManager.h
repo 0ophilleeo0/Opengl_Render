@@ -13,7 +13,10 @@ enum class ColorType {
 class TextureManager
 {
 public:
-	TextureManager(const std::string& path) :basePath(path) {}
+	void Init(const std::string& path) {
+		basePath = path;
+	}
+
 	bool LoadTexture(std::string textureName, ColorType type, bool flip = false);
 	bool LoadCubeTexture(std::string cubeName, const std::vector<std::string>& faces,\
 		ColorType type, bool flip = false);

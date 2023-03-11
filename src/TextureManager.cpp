@@ -94,9 +94,10 @@ bool TextureManager::LoadCubeTexture(std::string cubeName, const std::vector<std
 
 GLuint TextureManager::GetTextureID(std::string textureName)
 {
-    if (textureIDMap.count(textureName) != 0) {
-        return textureIDMap[textureName];
+    if (textureIDMap.count(textureName) == 0) {
+        std::cout << "TextureManager: textureName error!" << std::endl;
+        return 0;
     }
+    return textureIDMap[textureName];
     
-    return 0;
 }
