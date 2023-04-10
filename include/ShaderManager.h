@@ -17,7 +17,8 @@ public:
         basePath = path;
     }
 
-    void CompileShader(std::string vertexPath, std::string fragmentPath, const std::string name);
+    void CompileShader(const std::string& name, std::string vertexPath, std::string fragmentPath, \
+        std::string geometryPath = "");
 
     // activate the shader
     // ------------------------------------------------------------------------
@@ -117,10 +118,8 @@ private:
     // utility function for checking shader compilation/linking errors.
     // ------------------------------------------------------------------------
     void CheckCompileErrors(GLuint shader, std::string type);
-    void LoadShaderResource(const char* vertexPath, const char* fragmentPath);
+    void LoadShareFile(const char* path, std::string& shadeCode);
 
-    std::string vertexCode;
-    std::string fragmentCode;
     std::string basePath;
     std::unordered_map<std::string, GLuint> shaderIDMap;
 };
